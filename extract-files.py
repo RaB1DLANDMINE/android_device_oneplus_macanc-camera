@@ -6402,22 +6402,9 @@ blob_fixups: blob_fixups_user_type = {
         .call(blob_fixup_ums_activity_watcher_permission)
         .apktool_pack()
         .stripzip(),
-    'system_ext/priv-app/OplusExSystemService/OplusExSystemService.apk': blob_fixup()
-        .call(blob_fixup_apktool_unpack_full)
-        .call(blob_fixup_opluscamera_uses_library)
-        .apktool_pack()
-        .stripzip(),
     'system_ext/priv-app/DCS/DCS.apk': blob_fixup()
         .call(blob_fixup_apktool_unpack_full)
         .call(blob_fixup_opluscamera_uses_library)
-        .apktool_pack()
-        .stripzip(),
-    'system_ext/priv-app/FileEncryption/FileEncryption.apk': blob_fixup()
-        .call(blob_fixup_apktool_unpack_full)
-        .call(blob_fixup_opluscamera_uses_library)
-        .call(blob_fixup_fileencryption_secure_settings_permission)
-        .call(blob_fixup_fileencryption_biometric_enrollment_checks)
-        .call(blob_fixup_oplus_camera_system_properties)
         .apktool_pack()
         .stripzip(),
     'system_ext/app/SecurityPermission/SecurityPermission.apk': blob_fixup()

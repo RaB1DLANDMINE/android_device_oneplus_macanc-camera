@@ -8,7 +8,6 @@ my_product/app/OplusCamera/OplusCamera.apk:system_ext/priv-app/OplusCamera/Oplus
 # my_stock/app/ambientalert/ambientalert.apk:system_ext/app/ambientalert/ambientalert.apk
 # my_stock/priv-app/UMS/UMS.apk:system_ext/priv-app/UMS/UMS.apk
 # system_ext/app/SystemUIPlugin/SystemUIPlugin.apk
-system_ext/priv-app/OplusExSystemService/OplusExSystemService.apk
 my_product/lib64/libAPSClient-cmd-jni.so:system_ext/lib64/libAPSClient-cmd-jni.so;DISABLE_CHECKELF
 my_product/lib64/libAPSClient-jni.so:system_ext/lib64/libAPSClient-jni.so;DISABLE_CHECKELF
 my_product/lib64/libAncFilter_jni.so:system_ext/lib64/libAncFilter_jni.so;DISABLE_CHECKELF
@@ -273,7 +272,6 @@ system_ext/lib64/liboplussfplugin_ccodec.so;DISABLE_DEPS;DISABLE_CHECKELF
 # my_stock/app/MCS/lib/arm64/libmmkv.so:system_ext/lib64/libmmkv_mcs.so;MODULE_SUFFIX=_mcs;DISABLE_DEPS;SYMLINK=system_ext/app/MCS/lib/arm64/libmmkv.so
 # my_stock/app/MCS/lib/arm64/liboplus_conscrypt_jni.so:system_ext/lib64/liboplus_conscrypt_jni.so;MODULE_SUFFIX=_mcs;DISABLE_DEPS;SYMLINK=system_ext/app/MCS/lib/arm64/liboplus_conscrypt_jni.so
 # my_stock/priv-app/DCS/DCS.apk:system_ext/priv-app/DCS/DCS.apk
-my_stock/app/FileEncryption/FileEncryption.apk:system_ext/priv-app/FileEncryption/FileEncryption.apk
 # system_ext/app/SecurityPermission/SecurityPermission.apk
 # system_ext/app/SafeCenter/SafeCenter.apk
 system/framework/oplus-services.jar;EXTRACT_ONLY
