@@ -6342,6 +6342,20 @@ blob_fixups: blob_fixups_user_type = {
         .call(blob_fixup_opluscamera_qr_local_detect)
         .apktool_pack()
         .stripzip(),
+    # HEIF capture fix: the APS client dlopen()s libHeifEncoderWrapper.so and
+    # libNativeWinBuffExchange.so and, when both load, takes the native "dlsym
+    # way" HEIF path — which is broken on our port. On stock OOS namespace
+    # isolation makes those dlopens fail, so it falls back to the working Java
+    # reflection path ("jni exist, using java reflect way"). Rename the dlopen
+    # target strings (lib->xib, length-preserving) so the dlopens fail and the
+    # Java HEIF handoff is forced. Ported from OP15InfinityX infiniti-camera
+    # aa0dcc7. Both client variants carry the same logic, so patch both.
+    'system_ext/lib64/libAPSClient-cmd-jni.so': blob_fixup()
+        .binary_regex_replace(b'libHeifEncoderWrapper\\.so', b'xibHeifEncoderWrapper.so')
+        .binary_regex_replace(b'libNativeWinBuffExchange\\.so', b'xibNativeWinBuffExchange.so'),
+    'system_ext/lib64/libAPSClient-cmd-jni-extension.oplus.so': blob_fixup()
+        .binary_regex_replace(b'libHeifEncoderWrapper\\.so', b'xibHeifEncoderWrapper.so')
+        .binary_regex_replace(b'libNativeWinBuffExchange\\.so', b'xibNativeWinBuffExchange.so'),
     'system_ext/app/SystemUIPlugin/SystemUIPlugin.apk': blob_fixup()
         .call(blob_fixup_apktool_unpack_full)
         .call(blob_fixup_oplus_camera_system_properties)
