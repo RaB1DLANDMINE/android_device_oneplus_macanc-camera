@@ -688,6 +688,13 @@ def blob_fixup_opluscamera_third_party_gallery(ctx, file, file_path, *args, tmp_
 
     data = smali.read_text(encoding='utf-8', errors='ignore')
 
+    # Older OOS builds (macan / earlier macanc) had a caller-side OEM-gallery
+    # availability gate (Util->u0(Activity,String)Z ... if-nez v3, :cond_0) that
+    # skipped the fallback path. In macanc 11.A.47 that gate was refactored away:
+    # method p() builds a setPackage()-restricted Intent and hands it to q(), which
+    # launches via resolveActivity. Replacing q() below (which ignores the restricted
+    # Intent and fires a generic ACTION_VIEW) is sufficient on its own, so this gate
+    # bypass is best-effort: apply it if the old shape is present, skip otherwise.
     availability_pattern = (
         r'(invoke-static \{v3, v2\}, Lcom/oplus/camera/util/Util;->u0\(Landroid/app/Activity;Ljava/lang/String;\)Z\n'
         r'\n'
@@ -700,14 +707,12 @@ def blob_fixup_opluscamera_third_party_gallery(ctx, file, file_path, *args, tmp_
         r'(?:    \.line \d+\n)+)'
         r'    if-nez v3, :cond_0\n'
     )
-    data, availability_count = re.subn(
+    data = re.sub(
         availability_pattern,
         r'\1    goto :cond_0\n',
         data,
         count=1,
     )
-    if availability_count != 1:
-        raise ValueError('OplusCamera gallery availability gate patch point not found')
 
     q_body = (
         '    .locals 2\n'
