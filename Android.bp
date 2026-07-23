@@ -1,0 +1,6 @@
+// macanc shares the device-agnostic camera Soong modules defined globally in
+// device/oneplus/macan-camera (libapsfixup, libQnn*_gallery_system_ext,
+// CameraThemedIcon) — they are byte-identical across macan/macanc, and the
+// vendor libAlgoProcess blob references "libapsfixup" by that exact name.
+// Only the per-device camera-app libs (below, in Android.mk) and everything in
+// opluscamera.mk / sepolicy / configs / proprietary-files.txt are macanc-specific.
