@@ -678,7 +678,11 @@ def blob_fixup_opluscamera_qr_local_detect(ctx, file, file_path, *args, tmp_dir=
 def blob_fixup_opluscamera_third_party_gallery(ctx, file, file_path, *args, tmp_dir=None, **kwargs):
     # Drop the OEM gallery dependency for thumbnail preview. This mirrors the
     # upstream giulia camera-port approach: bypass the package availability
-    # gate and launch a plain ACTION_VIEW intent with read permission.
+    # gate and launch an ACTION_VIEW intent with read permission via a plain
+    # startActivity (NOT createChooser) so Android's own resolver shows the
+    # "Just once / Always" default-picker and remembers the user's choice.
+    # NOTE: at least one app must handle ACTION_VIEW image/* content:// or the
+    # resolver shows "no apps can perform this action".
     if tmp_dir is None:
         return
 
@@ -749,7 +753,58 @@ def blob_fixup_opluscamera_third_party_gallery(ctx, file, file_path, *args, tmp_
     if fixed == data:
         raise ValueError('OplusCamera GalleryHelper.q method not found')
 
-    smali.write_text(fixed, encoding='utf-8')
+    # --- Force GalleryHelper.p() to delegate straight to the patched q() --------
+    # Replacing q() is not enough on its own. On macanc 11.A.47 the thumbnail tap
+    # is handled by CameraManager$g.g(), which falls through unconditionally to
+    # GalleryHelper.p(CameraManager$g, jm/e, Z)Z -- p() is the SOLE launcher for
+    # the tap (its only startActivity path is via q()). But p() first builds the
+    # OEM "light gallery" intent (a CameraTansBitmapBinder extra bound through the
+    # ColorOS provider com.open.gallery.smart.provider, which we do NOT ship) and
+    # only reaches our patched q() from branches the no-OEM-gallery case never
+    # takes; the OEM launch throws a *caught* ActivityNotFoundException, so the tap
+    # dies silently and nothing opens. (The older CameraManager$g `if-eqz v0,
+    # :cond_a` -> `goto :cond_a` route-forcing patch does NOT apply here: that shape
+    # was refactored into a :goto_100 fall-through, so it is dropped.)
+    #
+    # Short-circuit p() at method entry: pull the media Uri (jm/e.b) and the
+    # is-video flag (p3) and hand them straight to q(), which fires the generic
+    # ACTION_VIEW "Open with" chooser, then return true. v0/v1 are free low locals
+    # (p() declares .registers 32); the original body is kept but unreachable so
+    # dalvik register/verify stays valid.
+    # p() declares .registers 32, so p0/p2/p3 live in high registers (v28+); the
+    # non-range invoke-virtual/iget-object forms below require v0-v15, so move the
+    # params down first with move*/from16 before using them.
+    p_prepend = (
+        '    move-object/from16 v0, p0\n'
+        '\n'
+        '    move-object/from16 v1, p2\n'
+        '\n'
+        '    iget-object v1, v1, Ljm/e;->b:Landroid/net/Uri;\n'
+        '\n'
+        '    move/from16 v2, p3\n'
+        '\n'
+        '    const/4 v3, 0x0\n'
+        '\n'
+        '    invoke-virtual {v0, v3, v2, v1}, Lcom/oplus/camera/helper/GalleryHelper;->q(Landroid/content/Intent;ZLandroid/net/Uri;)V\n'
+        '\n'
+        '    const/4 v0, 0x1\n'
+        '\n'
+        '    return v0\n'
+        '\n'
+    )
+    p_fixed, n_p = re.subn(
+        r'(\.method public final p\(Lcom/oplus/camera/CameraManager\$g;Ljm/e;Z\)Z\n'
+        r'    \.(?:registers|locals) \d+\n'
+        r'(?:    \.annotation[\s\S]*?\.end annotation\n)?'
+        r'\n)',
+        r'\1' + p_prepend,
+        fixed,
+        count=1,
+    )
+    if n_p != 1:
+        raise ValueError('OplusCamera GalleryHelper.p method not found')
+
+    smali.write_text(p_fixed, encoding='utf-8')
 
 
 def blob_fixup_strip_oem_permissions(ctx, file, file_path, *args, tmp_dir=None, **kwargs):
