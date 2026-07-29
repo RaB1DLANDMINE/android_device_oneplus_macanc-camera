@@ -356,6 +356,57 @@ def blob_fixup_oplus_camera_blur_npe_guard(ctx, file, file_path, *args, tmp_dir=
             out.append(data[last:])
             smali.write_text(''.join(out), encoding='utf-8')
 
+def blob_fixup_opluscamera_aac_stereo(ctx, file, file_path, *args, tmp_dir=None, **kwargs):
+    # OplusRecord feeds the camera encoder as stereo on macan/macanc, but this
+    # APK can configure the ordinary AAC MediaFormat as mono for depth/video.
+    # Stagefright then trims every other AAC input buffer as overlapping
+    # timestamps, producing slow/robotic audio. Keep OZO paths unchanged and
+    # only force the ordinary AAC encoder MediaFormat channel count (3rd
+    # createAudioFormat arg) to stereo.
+    #
+    # The 3 "ordinary" sites are the ones whose channel-count register is set by
+    # a branch: a ":cond_" label sits immediately before the createAudioFormat
+    # invoke. The OZO sites take the count straight from j() (a move-result with
+    # no preceding label) and are left alone. Register numbers are derived from
+    # each invoke, so this stays robust across OplusCamera builds (macan and
+    # macanc obfuscate to different registers).
+    if tmp_dir is None:
+        return
+
+    root = Path(tmp_dir)
+
+    codec_smali = codec_data = None
+    for smali in root.glob('smali*/**/*.smali'):
+        data = smali.read_text(encoding='utf-8', errors='ignore')
+        if '.source "CameraMediaCodec.java"' in data and '"audio/mp4a-latm"' in data:
+            codec_smali, codec_data = smali, data
+            break
+    if codec_smali is None:
+        raise ValueError('OplusCamera CameraMediaCodec smali not found')
+    if ':codex_aac_stereo_done' in codec_data:
+        return
+
+    pattern = re.compile(
+        r'(:cond_[0-9a-f]+\n'
+        r'(?:    move-object/from16 [vp]\d+, [vp]\d+\n)?'
+        r'(?:\n|    \.line \d+\n)*)'
+        r'(    invoke-static \{[vp]\d+, [vp]\d+, ([vp]\d+)\}, '
+        r'Landroid/media/MediaFormat;->createAudioFormat\(Ljava/lang/String;II\)Landroid/media/MediaFormat;\n)'
+    )
+
+    def _force_stereo(m):
+        return f'{m.group(1)}    const/4 {m.group(3)}, 0x2\n\n{m.group(2)}'
+
+    fixed, count = pattern.subn(_force_stereo, codec_data)
+    if count != 3:
+        raise ValueError(
+            f'OplusCamera AAC stereo: expected 3 patch points, found {count} in {codec_smali}'
+        )
+
+    fixed += '\n# :codex_aac_stereo_done\n'
+    codec_smali.write_text(fixed, encoding='utf-8')
+
+
 def blob_fixup_opluscamera_qr_local_detect(ctx, file, file_path, *args, tmp_dir=None, **kwargs):
     # QR scanning without AIUnit. Stock detection round-trips every preview
     # frame to com.oplus.aiunit's scan plugin (ScanClient -> FrameDetector);
@@ -6395,6 +6446,7 @@ blob_fixups: blob_fixups_user_type = {
         .call(blob_fixup_strip_oem_permissions)
         .call(blob_fixup_oplus_camera_blur_npe_guard)
         .call(blob_fixup_opluscamera_qr_local_detect)
+        .call(blob_fixup_opluscamera_aac_stereo)
         .apktool_pack()
         .stripzip(),
     # HEIF capture fix: the APS client dlopen()s libHeifEncoderWrapper.so and
